@@ -1,7 +1,8 @@
 #import "RNTNetwork.h"
 #import <React/RCTConvert.h>
 #import <AFNetworking/AFNetworking.h>
-#include <CommonCrypto/CommonDigest.h>
+
+NSString *FILE_PREFIX = @"file://";
 
 NSString *ERROR_CODE_DOWNLOAD_FAILURE = @"1";
 NSString *ERROR_CODE_UPLOAD_FAILURE = @"2";
@@ -12,9 +13,8 @@ NSDictionary* getFileInfo(NSURL *url) {
     NSInteger size = [data length];
 
     NSString *path = url.absoluteString;
-    NSString *prefix = @"file://";
-    if ([path hasPrefix:prefix]) {
-        path = [path substringFromIndex:[prefix length]];
+    if ([path hasPrefix:FILE_PREFIX]) {
+        path = [path substringFromIndex:[FILE_PREFIX length]];
     }
 
     return @{
@@ -28,9 +28,8 @@ NSDictionary* getFileInfo(NSURL *url) {
 NSURL* getFileURL(NSString *path) {
     
     // fileURLWithPath 要求格式为 file:// 开头
-    NSString *prefix = @"file:/";
-    if (![path hasPrefix:prefix]) {
-        path = [prefix stringByAppendingString:path];
+    if (![path hasPrefix:FILE_PREFIX]) {
+        path = [FILE_PREFIX stringByAppendingString:path];
     }
     
     return [NSURL fileURLWithPath:path];
@@ -117,6 +116,10 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
     NSString *fileName = file[@"fileName"];
     NSString *mimeType = file[@"mimeType"];
     
+    if (fileName == nil) {
+        fileName = path.lastPathComponent;
+    }
+    
     NSMutableURLRequest *request = [[AFHTTPRequestSerializer serializer] multipartFormRequestWithMethod:@"POST" URLString:url parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
         
             // 上传文件
@@ -132,7 +135,7 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
         } error:nil];
 
     AFURLSessionManager *manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
-
+    
     NSURLSessionUploadTask *uploadTask = [manager
             uploadTaskWithStreamedRequest:request
             progress:^(NSProgress *progress) {

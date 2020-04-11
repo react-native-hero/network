@@ -4,12 +4,12 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import okhttp3.*
 import okhttp3.Callback
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okio.*
+import okio.Buffer
+import okio.BufferedSink
+import okio.Okio
 import java.io.File
 import java.io.IOException
 import java.util.*
-
 
 class RNTNetworkModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
@@ -55,10 +55,13 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
             }
 
             override fun onResponse(call: Call, response: Response) {
-                response.body?.let { body ->
+                response.body()?.let { body ->
 
                     val file = File(path)
-                    val sink = file.sink().buffer()
+
+                    val sink = Okio.buffer(Okio.sink(file))
+                    val sinkBuffer = sink.buffer()
+
                     val source = body.source()
 
                     val totalSize = body.contentLength()
@@ -66,7 +69,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
                     val bufferSize = 8 * 1024L
 
                     var readSize: Long
-                    while (source.read(sink.buffer, bufferSize).also { readSize = it } != -1L) {
+                    while (source.read(sinkBuffer, bufferSize).also { readSize = it } != -1L) {
                         sink.emit()
                         loadSize += readSize
                         if (index > 0) {
@@ -115,16 +118,23 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
 
         val path = file.getString("path") as String
         val name = file.getString("name") as String
-        val fileName = file.getString("fileName") as String
         val mimeType = file.getString("mimeType") as String
+
+        val localFile = File(path)
+        val fileName = if (file.hasKey("fileName")) {
+            file.getString("fileName")
+        }
+        else {
+            localFile.name
+        }
 
         val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart(
                         name,
                         fileName,
                         createCustomRequestBody(
-                                mimeType.toMediaTypeOrNull(),
-                                File(path)
+                            MediaType.parse(mimeType),
+                            localFile
                         ) {
                             if (index > 0) {
                                 val map = Arguments.createMap()
@@ -150,11 +160,9 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
             }
 
             override fun onResponse(call: Call, response: Response) {
-                val code = response.code
-                val body = response.body
                 val map = Arguments.createMap()
-                map.putInt("code", code)
-                map.putString("body", body?.string())
+                map.putInt("code", response.code())
+                map.putString("body", response.body()?.string())
                 promise.resolve(map)
             }
         })
@@ -173,7 +181,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
 
             override fun writeTo(sink: BufferedSink) {
 
-                val source = file.source()
+                val source = Okio.source(file)
                 val buf = Buffer()
 
                 val totalSize = contentLength()
