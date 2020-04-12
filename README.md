@@ -77,7 +77,12 @@ upload(
       // optional, default value is the file name of path
       fileName: 'a.jpg',
     },
-    // optional
+    // optional, send request params
+    data: {
+      key1: 'value1',
+      key2: 'value2',
+    },
+    // optional, set request headers
     headers: {
 
     }
