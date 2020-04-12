@@ -25,14 +25,17 @@ NSDictionary* getFileInfo(NSURL *url) {
     
 }
 
-NSURL* getFileURL(NSString *path) {
+NSData* getFileData(NSString *path) {
     
-    // fileURLWithPath 要求格式为 file:// 开头
-    if (![path hasPrefix:FILE_PREFIX]) {
-        path = [FILE_PREFIX stringByAppendingString:path];
-    }
+    NSData *data = [NSData dataWithContentsOfFile:path];
+    return data;
     
-    return [NSURL fileURLWithPath:path];
+}
+
+NSString* dictionary2JsonString(NSDictionary *dict) {
+    
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options:0 error:nil];
+    return [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     
 }
 
@@ -74,7 +77,7 @@ RCT_EXPORT_METHOD(download:(NSDictionary*)options resolve:(RCTPromiseResolveBloc
 
     NSURL *URL = [NSURL URLWithString:url];
     NSURLRequest *request = [NSURLRequest requestWithURL:URL];
-
+    
     NSURLSessionDownloadTask *downloadTask = [manager
             downloadTaskWithRequest:request
             progress:^(NSProgress *progress) {
@@ -110,6 +113,7 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
 
     NSDictionary *file = [RCTConvert NSDictionary:options[@"file"]];
     NSDictionary *data = [RCTConvert NSDictionary:options[@"data"]];
+    NSDictionary *headers = [RCTConvert NSDictionary:options[@"headers"]];
     
     NSString *path = file[@"path"];
     NSString *name = file[@"name"];
@@ -120,21 +124,31 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
         fileName = path.lastPathComponent;
     }
     
-    NSMutableURLRequest *request = [[AFHTTPRequestSerializer serializer] multipartFormRequestWithMethod:@"POST" URLString:url parameters:nil constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
+    AFHTTPRequestSerializer *requestSerializer = [AFHTTPRequestSerializer serializer];
+    
+    if (headers != nil) {
+        for (NSString *key in headers) {
+            [requestSerializer setValue:headers[key] forHTTPHeaderField:key];
+        }
+    }
+    
+    AFHTTPResponseSerializer *responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    NSMutableURLRequest *request = [requestSerializer
+            multipartFormRequestWithMethod:@"POST"
+            URLString:url
+            parameters:data
+            constructingBodyWithBlock:^(id<AFMultipartFormData> formData) {
         
-            // 上传文件
-            [formData appendPartWithFileURL:getFileURL(path) name:name fileName:fileName mimeType:mimeType error:nil];
-        
-            // 附带其他参数
-            if (data != nil) {
-                for (NSString *key in data) {
-                    [formData appendPartWithFormData:data[key] name:key];
-                }
-            }
+                [formData appendPartWithFileData:getFileData(path) name:name fileName:fileName mimeType:mimeType];
             
-        } error:nil];
+            }
+            error:nil
+    ];
 
     AFURLSessionManager *manager = [[AFURLSessionManager alloc] initWithSessionConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    
+    manager.responseSerializer = responseSerializer;
     
     NSURLSessionUploadTask *uploadTask = [manager
             uploadTaskWithStreamedRequest:request
@@ -148,8 +162,22 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
             }
             completionHandler:^(NSURLResponse *response, id responseObject, NSError *error) {
                 if (error == nil) {
-                    NSLog(@"upload response %@;\n", response);
-                    NSLog(@"upload responseObject %@;\n", responseObject);
+                    
+                    NSMutableDictionary *result = [[NSMutableDictionary alloc] init];
+                    
+                    if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+                        NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
+                        result[@"status_code"] = @(httpResponse.statusCode);
+                    }
+                    
+                    if ([responseObject isKindOfClass:[NSDictionary class]]) {
+                        NSDictionary *json = (NSDictionary*)responseObject;
+                        // 安卓返回 map 比较麻烦，因此这里统一改成返回字符串
+                        result[@"body"] = dictionary2JsonString(json);
+                    }
+                    
+                    resolve(result);
+                    
                 }
                 else {
                     reject(ERROR_CODE_UPLOAD_FAILURE, error.localizedDescription, error);

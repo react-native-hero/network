@@ -109,8 +109,16 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
         val url = options.getString("url") as String
 
         val file = options.getMap("file") as ReadableMap
+
         val data = if (options.hasKey("data")) {
             options.getMap("data")
+        }
+        else {
+            null
+        }
+
+        val headers = if (options.hasKey("headers")) {
+            options.getMap("headers")
         }
         else {
             null
@@ -128,7 +136,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
             localFile.name
         }
 
-        val builder = MultipartBody.Builder().setType(MultipartBody.FORM)
+        val formBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
                 .addFormDataPart(
                         name,
                         fileName,
@@ -146,22 +154,28 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
                 )
 
         data?.let {
-            for ((key,value) in it.toHashMap()){
-                builder.addFormDataPart(key, value.toString())
+            for ((key,value) in it.toHashMap()) {
+                formBuilder.addFormDataPart(key, value.toString())
             }
         }
 
         val client = OkHttpClient()
-        val request = Request.Builder().url(url).post(builder.build()).build()
+        val requestBuilder = Request.Builder().url(url).post(formBuilder.build())
 
-        client.newCall(request).enqueue(object : Callback {
+        headers?.let {
+            for ((key, value) in it.toHashMap()) {
+                requestBuilder.addHeader(key, value.toString())
+            }
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 promise.reject(ERROR_CODE_UPLOAD_FAILURE, e.localizedMessage)
             }
 
             override fun onResponse(call: Call, response: Response) {
                 val map = Arguments.createMap()
-                map.putInt("code", response.code())
+                map.putInt("status_code", response.code())
                 map.putString("body", response.body()?.string())
                 promise.resolve(map)
             }
