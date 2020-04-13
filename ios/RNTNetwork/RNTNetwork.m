@@ -2,19 +2,20 @@
 #import <React/RCTConvert.h>
 #import <AFNetworking/AFNetworking.h>
 
-NSString *FILE_PREFIX = @"file://";
+@implementation RNTNetwork
 
-NSString *ERROR_CODE_DOWNLOAD_FAILURE = @"1";
-NSString *ERROR_CODE_UPLOAD_FAILURE = @"2";
+static NSString *ERROR_CODE_DOWNLOAD_FAILURE = @"1";
+static NSString *ERROR_CODE_UPLOAD_FAILURE = @"2";
 
-NSDictionary* getFileInfo(NSURL *url) {
+static NSDictionary* getFileInfo(NSURL *url) {
     
     NSData *data = [NSData dataWithContentsOfURL:url];
     NSInteger size = [data length];
 
     NSString *path = url.absoluteString;
-    if ([path hasPrefix:FILE_PREFIX]) {
-        path = [path substringFromIndex:[FILE_PREFIX length]];
+    NSString *prefix = @"file://";
+    if ([path hasPrefix:prefix]) {
+        path = [path substringFromIndex:[prefix length]];
     }
 
     return @{
@@ -25,21 +26,18 @@ NSDictionary* getFileInfo(NSURL *url) {
     
 }
 
-NSData* getFileData(NSString *path) {
+static NSData* getFileData(NSString *path) {
     
-    NSData *data = [NSData dataWithContentsOfFile:path];
-    return data;
-    
+    return [NSData dataWithContentsOfFile:path];
+
 }
 
-NSString* dictionary2JsonString(NSDictionary *dict) {
+static NSString* dictionary2JsonString(NSDictionary *dict) {
     
     NSData *jsonData = [NSJSONSerialization dataWithJSONObject:dict options:0 error:nil];
     return [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
     
 }
-
-@implementation RNTNetwork
 
 + (BOOL)requiresMainQueueSetup {
     return YES;
@@ -50,10 +48,10 @@ NSString* dictionary2JsonString(NSDictionary *dict) {
 }
 
 - (NSArray<NSString *> *)supportedEvents {
-  return @[
-      @"download_progress",
-      @"upload_progress",
-  ];
+    return @[
+        @"download_progress",
+        @"upload_progress",
+    ];
 }
 
 - (NSDictionary *)constantsToExport {

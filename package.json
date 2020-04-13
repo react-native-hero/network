@@ -1,6 +1,6 @@
 {
   "name": "@react-native-hero/network",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "react native network",
   "main": "index.js",
   "scripts": {
