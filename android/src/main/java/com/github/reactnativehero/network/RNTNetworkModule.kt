@@ -4,9 +4,8 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import okhttp3.*
 import okhttp3.Callback
-import okio.Buffer
-import okio.BufferedSink
-import okio.Okio
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okio.*
 import java.io.File
 import java.io.IOException
 import java.util.*
@@ -55,12 +54,12 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
             }
 
             override fun onResponse(call: Call, response: Response) {
-                response.body()?.let { body ->
+                response.body?.let { body ->
 
                     val file = File(path)
 
-                    val sink = Okio.buffer(Okio.sink(file))
-                    val sinkBuffer = sink.buffer()
+                    val sink = file.sink().buffer()
+                    val sinkBuffer = sink.buffer
 
                     val source = body.source()
 
@@ -141,7 +140,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
                         name,
                         fileName,
                         createCustomRequestBody(
-                            MediaType.parse(mimeType),
+                            mimeType.toMediaTypeOrNull(),
                             localFile
                         ) {
                             if (index > 0) {
@@ -175,8 +174,8 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
 
             override fun onResponse(call: Call, response: Response) {
                 val map = Arguments.createMap()
-                map.putInt("status_code", response.code())
-                map.putString("body", response.body()?.string())
+                map.putInt("status_code", response.code)
+                map.putString("body", response.body?.string())
                 promise.resolve(map)
             }
         })
@@ -195,7 +194,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
 
             override fun writeTo(sink: BufferedSink) {
 
-                val source = Okio.source(file)
+                val source = file.source()
                 val buf = Buffer()
 
                 val totalSize = contentLength()
