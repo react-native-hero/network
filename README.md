@@ -43,6 +43,7 @@ import {
   CODE,
   download,
   upload,
+  fetch,
 } from '@react-native-hero/network'
 
 download(
@@ -55,10 +56,10 @@ download(
   function (progress) {
     // [0, 1]
   }
-).then(data => {
-  data.name
-  data.path
-  data.size
+).then(response => {
+  response.name
+  response.path
+  response.size
 })
 .catch(err => {
   if (err.code === CODE.DOWNLOAD_FAILURE) {
@@ -91,9 +92,9 @@ upload(
   function (progress) {
     // [0, 1]
   }
-).then(data => {
-  data.status_code
-  data.body
+).then(response => {
+  response.status_code
+  response.body
 })
 .catch(err => {
   if (err.code === CODE.UPLOAD_FAILURE) {
@@ -101,4 +102,26 @@ upload(
   }
 })
 
+fetch({
+  url: '',
+  methods: 'post',
+  // optional, send request params
+  data: {
+    key1: 'value1',
+    key2: 'value2',
+  },
+  // optional, set request headers
+  headers: {
+
+  }
+})
+.then(response => {
+  response.status_code
+  response.body
+})
+.catch(err => {
+  if (err.code === CODE.FETCH_FAILURE) {
+    console.log('fetch error')
+  }
+})
 ```

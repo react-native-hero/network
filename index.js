@@ -22,6 +22,7 @@ eventEmitter.addListener('upload_progress', handleProgress)
 export const CODE = {
   DOWNLOAD_FAILURE: RNTNetwork.ERROR_CODE_DOWNLOAD_FAILURE,
   UPLOAD_FAILURE: RNTNetwork.ERROR_CODE_UPLOAD_FAILURE,
+  FETCH_FAILURE: RNTNetwork.ERROR_CODE_FETCH_FAILURE,
 }
 
 /**
@@ -54,4 +55,11 @@ export function upload(options, onProgress) {
         delete index2callback[options.index]
       }
     })
+}
+
+/**
+ * 发送请求
+ */
+export function fetch(options) {
+  return RNTNetwork.fetch(options)
 }

@@ -4,17 +4,24 @@ import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import okhttp3.*
 import okhttp3.Callback
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 import okio.*
+import org.json.JSONObject
 import java.io.File
 import java.io.IOException
 import java.util.*
+
 
 class RNTNetworkModule(private val reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
 
     companion object {
         private const val ERROR_CODE_DOWNLOAD_FAILURE = "1"
         private const val ERROR_CODE_UPLOAD_FAILURE = "2"
+        private const val ERROR_CODE_FETCH_FAILURE = "3"
+        private val JSON = "application/json; charset=utf-8".toMediaType()
     }
 
     override fun getName(): String {
@@ -27,6 +34,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
 
         constants["ERROR_CODE_DOWNLOAD_FAILURE"] = ERROR_CODE_DOWNLOAD_FAILURE
         constants["ERROR_CODE_UPLOAD_FAILURE"] = ERROR_CODE_UPLOAD_FAILURE
+        constants["ERROR_CODE_FETCH_FAILURE"] = ERROR_CODE_FETCH_FAILURE
 
         return constants
 
@@ -110,14 +118,14 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
         val file = options.getMap("file") as ReadableMap
 
         val data = if (options.hasKey("data")) {
-            options.getMap("data")
+            options.getMap("data")?.toHashMap()
         }
         else {
             null
         }
 
         val headers = if (options.hasKey("headers")) {
-            options.getMap("headers")
+            options.getMap("headers")?.toHashMap()
         }
         else {
             null
@@ -153,7 +161,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
                 )
 
         data?.let {
-            for ((key,value) in it.toHashMap()) {
+            for ((key,value) in it) {
                 formBuilder.addFormDataPart(key, value.toString())
             }
         }
@@ -162,7 +170,7 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
         val requestBuilder = Request.Builder().url(url).post(formBuilder.build())
 
         headers?.let {
-            for ((key, value) in it.toHashMap()) {
+            for ((key, value) in it) {
                 requestBuilder.addHeader(key, value.toString())
             }
         }
@@ -170,6 +178,74 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
         client.newCall(requestBuilder.build()).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 promise.reject(ERROR_CODE_UPLOAD_FAILURE, e.localizedMessage)
+            }
+
+            override fun onResponse(call: Call, response: Response) {
+                val map = Arguments.createMap()
+                map.putInt("status_code", response.code)
+                map.putString("body", response.body?.string())
+                promise.resolve(map)
+            }
+        })
+
+    }
+
+    @ReactMethod
+    fun fetch(options: ReadableMap, promise: Promise) {
+
+        var url = options.getString("url") as String
+        val method = options.getString("method") as String
+
+        val data = if (options.hasKey("data")) {
+            options.getMap("data")?.toHashMap()
+        }
+        else {
+            null
+        }
+
+        val headers = if (options.hasKey("headers")) {
+            options.getMap("headers")?.toHashMap()
+        }
+        else {
+            null
+        }
+
+        val client = OkHttpClient()
+        val isPost = method.toUpperCase(Locale.ROOT) == "POST"
+
+        var requestBody: RequestBody? = null
+
+        if (isPost) {
+            data?.let {
+                requestBody = JSONObject(it).toString().toRequestBody(JSON)
+            }
+        }
+        else {
+            val httpUrl = url.toHttpUrlOrNull() ?: return
+            val urlBuilder = httpUrl.newBuilder()
+            data?.let {
+                for ((key, value) in it) {
+                    urlBuilder.addQueryParameter(key, value.toString())
+                }
+            }
+            url = urlBuilder.build().toString()
+        }
+
+        var requestBuilder = Request.Builder().url(url)
+
+        requestBody?.let {
+            requestBuilder = requestBuilder.post(it)
+        }
+
+        headers?.let {
+            for ((key, value) in it) {
+                requestBuilder.addHeader(key, value.toString())
+            }
+        }
+
+        client.newCall(requestBuilder.build()).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
+                promise.reject(ERROR_CODE_FETCH_FAILURE, e.localizedMessage)
             }
 
             override fun onResponse(call: Call, response: Response) {

@@ -6,6 +6,7 @@
 
 static NSString *ERROR_CODE_DOWNLOAD_FAILURE = @"1";
 static NSString *ERROR_CODE_UPLOAD_FAILURE = @"2";
+static NSString *ERROR_CODE_FETCH_FAILURE = @"3";
 
 static NSDictionary* getFileInfo(NSURL *url) {
     
@@ -58,6 +59,7 @@ static NSString* dictionary2JsonString(NSDictionary *dict) {
     return @{
         @"ERROR_CODE_DOWNLOAD_FAILURE": ERROR_CODE_DOWNLOAD_FAILURE,
         @"ERROR_CODE_UPLOAD_FAILURE": ERROR_CODE_UPLOAD_FAILURE,
+        @"ERROR_CODE_FETCH_FAILURE": ERROR_CODE_FETCH_FAILURE,
     };
 }
 
@@ -184,6 +186,83 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
     ];
 
     [uploadTask resume];
+
+}
+
+RCT_EXPORT_METHOD(fetch:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject) {
+
+    NSString *url = [RCTConvert NSString:options[@"url"]];
+    NSString *method = [RCTConvert NSString:options[@"method"]];
+    NSDictionary *data = [RCTConvert NSDictionary:options[@"data"]];
+    NSDictionary *headers = [RCTConvert NSDictionary:options[@"headers"]];
+
+    AFHTTPSessionManager *manager = [AFHTTPSessionManager manager];
+    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+    
+    if ([method.uppercaseString isEqual: @"POST"]) {
+        manager.requestSerializer = [AFJSONRequestSerializer serializer];
+        [manager
+            POST:url
+            parameters:data
+            headers:headers
+            progress:nil
+            success:^(NSURLSessionDataTask *task, id responseObject) {
+                
+                NSURLResponse *response = task.response;
+            
+                NSMutableDictionary *result = [[NSMutableDictionary alloc] init];
+            
+                if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+                    NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
+                    result[@"status_code"] = @(httpResponse.statusCode);
+                }
+                
+                if ([responseObject isKindOfClass:[NSDictionary class]]) {
+                    NSDictionary *json = (NSDictionary*)responseObject;
+                    // 安卓返回 map 比较麻烦，因此这里统一改成返回字符串
+                    result[@"body"] = dictionary2JsonString(json);
+                }
+                
+                resolve(result);
+            
+            }
+            failure:^(NSURLSessionDataTask *task, NSError *error) {
+                reject(ERROR_CODE_FETCH_FAILURE, error.localizedDescription, error);
+            }
+         ];
+    }
+    else {
+        [manager
+            GET:url
+            parameters:data
+            headers:headers
+            progress:nil
+            success:^(NSURLSessionDataTask *task, id responseObject) {
+                
+                NSURLResponse *response = task.response;
+            
+                NSMutableDictionary *result = [[NSMutableDictionary alloc] init];
+            
+                if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
+                    NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
+                    result[@"status_code"] = @(httpResponse.statusCode);
+                }
+                
+                if ([responseObject isKindOfClass:[NSDictionary class]]) {
+                    NSDictionary *json = (NSDictionary*)responseObject;
+                    // 安卓返回 map 比较麻烦，因此这里统一改成返回字符串
+                    result[@"body"] = dictionary2JsonString(json);
+                }
+                
+                resolve(result);
+                
+            }
+            failure:^(NSURLSessionDataTask *task, NSError *error) {
+                reject(ERROR_CODE_FETCH_FAILURE, error.localizedDescription, error);
+            }
+         ];
+    }
+    
 
 }
 
