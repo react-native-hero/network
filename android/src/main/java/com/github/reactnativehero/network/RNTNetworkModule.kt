@@ -183,7 +183,14 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
             override fun onResponse(call: Call, response: Response) {
                 val map = Arguments.createMap()
                 map.putInt("status_code", response.code)
+
+                val headers = Arguments.createMap()
+                for ((key, value) in response.headers) {
+                    headers.putString(key, value)
+                }
+                map.putMap("headers", headers)
                 map.putString("body", response.body?.string())
+
                 promise.resolve(map)
             }
         })
@@ -251,7 +258,14 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
             override fun onResponse(call: Call, response: Response) {
                 val map = Arguments.createMap()
                 map.putInt("status_code", response.code)
+
+                val headers = Arguments.createMap()
+                for ((key, value) in response.headers) {
+                    headers.putString(key, value)
+                }
+                map.putMap("headers", headers)
                 map.putString("body", response.body?.string())
+
                 promise.resolve(map)
             }
         })

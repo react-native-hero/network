@@ -168,6 +168,7 @@ RCT_EXPORT_METHOD(upload:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)
                     if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
                         NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
                         result[@"status_code"] = @(httpResponse.statusCode);
+                        result[@"headers"] = httpResponse.allHeaderFields;
                     }
                     
                     if ([responseObject isKindOfClass:[NSDictionary class]]) {
@@ -215,6 +216,7 @@ RCT_EXPORT_METHOD(fetch:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)r
                 if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
                     NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
                     result[@"status_code"] = @(httpResponse.statusCode);
+                    result[@"headers"] = httpResponse.allHeaderFields;
                 }
                 
                 if ([responseObject isKindOfClass:[NSDictionary class]]) {
@@ -246,6 +248,7 @@ RCT_EXPORT_METHOD(fetch:(NSDictionary*)options resolve:(RCTPromiseResolveBlock)r
                 if ([response isKindOfClass:[NSHTTPURLResponse class]]) {
                     NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
                     result[@"status_code"] = @(httpResponse.statusCode);
+                    result[@"headers"] = httpResponse.allHeaderFields;
                 }
                 
                 if ([responseObject isKindOfClass:[NSDictionary class]]) {
