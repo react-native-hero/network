@@ -184,11 +184,11 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
                 val map = Arguments.createMap()
                 map.putInt("status_code", response.code)
 
-                val headers = Arguments.createMap()
+                val headerMap = Arguments.createMap()
                 for ((key, value) in response.headers) {
-                    headers.putString(key, value)
+                    headerMap.putString(key, value)
                 }
-                map.putMap("headers", headers)
+                map.putMap("headers", headerMap)
                 map.putString("body", response.body?.string())
 
                 promise.resolve(map)
@@ -218,13 +218,13 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
         }
 
         val client = OkHttpClient()
-        val isPost = method.toUpperCase(Locale.ROOT) == "POST"
+        val isPost = method.uppercase(Locale.ROOT) == "POST"
 
         var requestBody: RequestBody? = null
 
         if (isPost) {
             data?.let {
-                requestBody = JSONObject(it).toString().toRequestBody(JSON)
+                requestBody = JSONObject(it as Map<*, *>).toString().toRequestBody(JSON)
             }
         }
         else {
@@ -259,11 +259,11 @@ class RNTNetworkModule(private val reactContext: ReactApplicationContext) : Reac
                 val map = Arguments.createMap()
                 map.putInt("status_code", response.code)
 
-                val headers = Arguments.createMap()
+                val headerMap = Arguments.createMap()
                 for ((key, value) in response.headers) {
-                    headers.putString(key, value)
+                    headerMap.putString(key, value)
                 }
-                map.putMap("headers", headers)
+                map.putMap("headers", headerMap)
                 map.putString("body", response.body?.string())
 
                 promise.resolve(map)
